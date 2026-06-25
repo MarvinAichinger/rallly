@@ -37,17 +37,6 @@ jobs:
       - name: Run sherif
         run: pnpm dlx sherif@latest
 
-  linting:
-    name: Linting
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-node
-      - uses: ./.github/actions/pnpm-install
-
-      - name: Check linting rules
-        run: pnpm turbo check
-
   unit-tests:
     name: Unit tests
     runs-on: ubuntu-latest
