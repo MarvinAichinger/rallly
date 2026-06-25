@@ -24,13 +24,15 @@ test.describe.serial(() => {
     await page.goto("/settings/profile");
 
     const nameInput = page.getByLabel("Name");
-    await nameInput.clear();
-    await nameInput.fill("Updated Name");
+    await nameInput.click({ clickCount: 3 });
+    await page.keyboard.type("Updated Name");
 
-    await page.getByRole("button", { name: "Save" }).click();
+    const saveButton = page.getByRole("button", { name: "Save" });
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
 
     await page.reload();
 
-    await expect(nameInput).toHaveValue("Updated Name");
+    await expect(page.getByLabel("Name")).toHaveValue("Updated Name");
   });
 });
