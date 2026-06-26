@@ -38,25 +38,18 @@ test.beforeAll(async () => {
   eventId = event.id;
 });
 
-test("should display event title and action buttons", async ({ page }) => {
+test("should display event title and register button", async ({ page }) => {
   await page.goto(`/e/${eventId}`);
   await expect(page.locator("h1")).toContainText("Test Event");
-  await expect(page.getByText("Upcoming")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Accept" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Decline" })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Add to Calendar" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Register" })).toBeVisible();
 });
 
-test("should open calendar dropdown when clicking Add to Calendar", async ({
+test("should open registration dialog when clicking Register", async ({
   page,
 }) => {
   await page.goto(`/e/${eventId}`);
-  await page.getByRole("button", { name: "Add to Calendar" }).click();
-  await expect(page.getByText("Google Calendar")).toBeVisible();
-  await expect(page.getByText("Microsoft 365")).toBeVisible();
-  await expect(page.getByText("Download ICS File")).toBeVisible();
+  await page.getByRole("button", { name: "Register" }).click();
+  await expect(page.getByText("Your details")).toBeVisible();
 });
 
 test("should show 404 for invalid event ID", async ({ page }) => {
