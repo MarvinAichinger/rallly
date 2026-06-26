@@ -29,7 +29,7 @@
 - Abstimmung per Ja / Falls erforderlich / Nein
 - Kommentarfunktion
 - E-Mail-Benachrichtigungen bei neuen Stimmen
-- Geplante Events (`/e/<id>`) mit Accept/Decline-Funktion
+- Geplante Events mit Accept/Decline-Funktion
 - Nutzer-Registrierung, Login (Passwort, OTP, OAuth)
 - Spaces (Workspace) mit Mitgliedern und Abrechnung (Pro-Tier)
 
@@ -67,31 +67,9 @@ Im Projekt werden drei verschiedene Test-Frameworks eingesetzt, jeweils passend 
 | Framework | Einsatzbereich | Konfiguration |
 |---|---|---|
 | **Vitest** | Unit Tests (Marvin) | `apps/web/vitest.config.mts` |
-| **Jest** | Unit & Integrationstests (Dorian) | Im Monorepo integriert |
+| **Jest** | Unit & Integrationstests (Dorian) | `jest.config.js` |
 | **Playwright** | E2E-Tests | `apps/web/playwright.config.ts` |
 | **k6** | Load Tests | `.js`-Skripte, CLI-Ausführung |
-
-**Vitest-Konfiguration** (`apps/web/vitest.config.mts`):
-```ts
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    globals: true,
-    environment: "jsdom",
-    include: ["**/*.test.{ts,tsx}"],
-    exclude: ["**/node_modules/**", "**/*.spec.ts"],
-    setupFiles: ["./src/test/setup.ts"],
-    css: true,
-  },
-});
-```
-
-**Playwright-Konfiguration** (`apps/web/playwright.config.ts`):
-- Browser: Chromium (Desktop Chrome, 1280×720)
-- `workers: 1` – sequenzielle Ausführung (verhindert Race Conditions)
-- Traces bei Fehler (`trace: "retain-on-failure"`)
-- Web-Server wird automatisch gestartet (`next dev` / `next start`)
-- Playwright Report wird als CI-Artefakt hochgeladen
 
 ---
 
@@ -99,23 +77,15 @@ export default defineConfig({
 
 #### Unit Tests – Marvin (Vitest)
 
-Marvin hat Unit Tests mit **Vitest** geschrieben. Getestet werden interne Hilfsfunktionen im Bereich Datum/Zeit-Verarbeitung.
+Marvin hat Unit Tests mit **Vitest** geschrieben. Getestet werden interne Hilfsfunktionen im Bereich Datum/Zeit-Verarbeitung (`date-time-utils.ts`)
 
-**Getestete Module:**
-- `date-time-utils.ts` – `timezoneSchema`, `getDuration`, `expectTimeOption`, `removeAllOptionsForDay`
-- `get-value-by-path.ts`
-- `ics.ts`
-- `encryption.ts` (Roundtrip, Security Properties, Tamper-Detection)
-
-**Beispiel – `getDuration` und `removeAllOptionsForDay`:**
+**Beispiel – `getDuration`:**
 
 ![Vitest Unit Test Code](docs/images/report/image6.png)
 
 **Code-Coverage-Bericht (`web/src/utils`):**
 
 ![Coverage Report](docs/images/report/image5.png)
-
-Die vollständig getesteten Dateien (`get-value-by-path.ts`, `ics.ts`, `timezone-schema.ts`) erreichen 100 % Statement-, Branch-, Function- und Line-Coverage. Andere Hilfsdateien wie `is-valid-name.ts` oder `is-business-email.ts` sind in diesem Coverage-Lauf noch nicht erfasst, da sie in Dorins Jest-Suite getestet werden.
 
 ---
 
@@ -149,11 +119,9 @@ Die Testdateien liegen unter `apps/web/tests/jest/` und werden mit `jest` ausgef
 
 #### Integrationstests – Marvin (Vitest / tRPC-Schema)
 
-Marvin hat Integrationstests für die **private API-Route** geschrieben. Dabei wird das Zod-Schema `createPollInputSchema` validiert – insbesondere die Regel, dass `dates` und `slots` nicht gleichzeitig angegeben werden dürfen:
+Marvin hat Integrationstests für die **private API-Route** geschrieben. Dabei wird das Zod-Schema `createPollInputSchema` validiert, insbesondere die Regel, dass `dates` und `slots` nicht gleichzeitig angegeben werden dürfen:
 
 ![Integration Test Code – Schema-Validierung](docs/images/report/image10.png)
-
-Diese Tests laufen direkt gegen die Validierungslogik ohne HTTP-Overhead und stellen sicher, dass ungültige Eingaben korrekt abgelehnt werden.
 
 ---
 
@@ -191,12 +159,6 @@ Marvin hat E2E-Tests für den **Poll-Management-Workflow** implementiert. Ein we
 
 ![Manage-Menü](docs/images/report/image15.png)
 
-Weitere getestete Szenarien (aus dem bestehenden Test-Setup):
-- Poll erstellen und löschen (`create-delete-poll.spec.ts`)
-- Abstimmung und Kommentar hinzufügen (`vote-and-comment.spec.ts`)
-- Optionen bearbeiten mit Warnung bei vorhandenen Votes (`edit-options.spec.ts`)
-- House-Keeping-API: inaktive Polls markieren, gelöschte Polls entfernen, Polls automatisch schließen (`house-keeping.spec.ts`)
-
 ---
 
 #### E2E-Tests – Dorian (Playwright)
@@ -222,14 +184,14 @@ Dorian hat E2E-Tests für die **öffentliche Event-Seite** (`/e/<eventId>`) gesc
 
 ### 2.5 CI/CD Pipeline
 
-Die CI/CD-Pipeline läuft auf **GitHub Actions** und wird bei jedem Push auf `main` sowie bei Pull Requests gegen `main` ausgelöst. Concurrency-Gruppen verhindern parallele Runs desselben Workflows.
+Die CI/CD-Pipeline läuft auf **GitHub Actions**.
 
 **Pipeline-Übersicht:**
 
 ```
-┌─────────────────┐  ┌──────────┐  ┌──────────┐
-│   type-check    │  │  sherif  │  │ linting  │
-└─────────────────┘  └──────────┘  └──────────┘
+┌─────────────────┐  ┌──────────┐
+│   type-check    │  │  sherif  │
+└─────────────────┘  └──────────┘
         │
 ┌───────▼─────────┐
 │   unit-tests    │   pnpm test:unit (Vitest)
@@ -240,18 +202,6 @@ Die CI/CD-Pipeline läuft auf **GitHub Actions** und wird bei jedem Push auf `ma
 │  (docker compose up) │  │  (Playwright, CI)    │
 └──────────────────────┘  └──────────────────────┘
 ```
-
-**Jobs im Detail:**
-
-| Job | Beschreibung |
-|---|---|
-| `type-check` | TypeScript-Typprüfung via `pnpm type-check` |
-| `sherif` | Monorepo-Dependency-Konsistenzcheck |
-| `linting` | Biome Linter/Formatter via `pnpm turbo check` |
-| `unit-tests` | Vitest Unit Tests via `pnpm test:unit` |
-| `docker-smoke-test` | Startet die gesamte App via `docker compose up --wait`, prüft ob sie hochkommt |
-| `playwright-version` | Löst die exakte Playwright-Version aus `pnpm-lock.yaml` auf (für den Container-Image-Tag) |
-| `integration-tests` | Playwright E2E-Tests in einem offiziellen Playwright-Container mit echtem PostgreSQL und Mailpit |
 
 **Services für Integration Tests:**
 - **PostgreSQL 18** (alpine): Echte Datenbank, Health-Check via `pg_isready`
@@ -288,13 +238,13 @@ Test-Isolation ist auf mehreren Ebenen sichergestellt:
 
 ## 3. Load Tests
 
-Load Tests wurden mit **k6** (Grafana k6) durchgeführt. k6 ist ein Open-Source-Load-Testing-Tool, das Tests in JavaScript/TypeScript geschrieben werden können und nativ HTTP-Requests, Checks und Metriken unterstützt. Die Skripte liegen unter `apps/web/tests/load/`.
+Load Tests wurden mit **k6** (Grafana k6) durchgeführt. Die Skripte liegen unter `apps/web/tests/load/`.
 
 ---
 
 ### 3.1 Load Test – Marvin (`vote-load.js`)
 
-**Zweck:** Simulation von gleichzeitigen Teilnehmern, die eine Umfrage aufrufen und abstimmen – der kritischste Write-Pfad der Applikation.
+**Zweck:** Simulation von gleichzeitigen Teilnehmern, die eine Umfrage aufrufen und abstimmen, der kritischste Write-Pfad der Applikation.
 
 **Art des Tests:** Ramp-Up-Load-Test (Lastanstieg → Haltezeit → Ramp-Down)
 
@@ -327,23 +277,11 @@ votes: optionIds.map((id) => ({ optionId: id, type: "yes" }))
 
 ![k6 Terminal Ergebnis – Marvin](docs/images/report/image21.png)
 
-**Ergebnis-Zusammenfassung:**
-| Metrik | Wert |
-|---|---|
-| Requests gesamt | 342 |
-| Fehlerrate | 0.00 % |
-| Durchschnittliche Latenz | 22.17 ms |
-| Median-Latenz | 17.14 ms |
-| P(95)-Latenz | 41.39 ms |
-| Max-Latenz | 640.19 ms |
-| Threshold `p(95)<500` | ✅ bestanden (41.39 ms) |
-| Threshold `rate<0.05` | ✅ bestanden (0.00 %) |
-
 **Checks:**
-- `anonymous sign-in: HTTP 200` ✅
-- `poll found: HTTP 200` ✅
-- `vote submitted: HTTP 200` ✅
-- `no tRPC error` ✅
+- `anonymous sign-in: HTTP 200`
+- `poll found: HTTP 200`
+- `vote submitted: HTTP 200`
+- `no tRPC error`
 
 **Abstimmungsergebnis in der Applikation** (die simulierten Load Tester sind als Teilnehmer sichtbar):
 
@@ -352,8 +290,6 @@ votes: optionIds.map((id) => ({ optionId: id, type: "yes" }))
 **E-Mail-Benachrichtigungen in Mailpit** (für jeden abgegebenen Vote wurde eine Notification-E-Mail versandt):
 
 ![Mailpit Load Test E-Mails](docs/images/report/image22.png)
-
-**Analyse:** Der Vote-Endpoint hat unter Spitzenlast (bis zu 500 VUs) alle definierten Schwellenwerte deutlich unterschritten. Die P(95)-Latenz von 41 ms liegt weit unter dem gesetzten Limit von 500 ms, und die Fehlerrate bleibt bei 0 %. Die E-Mail-Benachrichtigungen wurden korrekt für alle Teilnehmer ausgelöst, was zeigt, dass auch asynchrone Prozesse (E-Mail-Versand) unter Last stabil funktionieren.
 
 ---
 
