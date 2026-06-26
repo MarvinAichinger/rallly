@@ -1,4 +1,4 @@
-import { isBusinessEmail } from "../../src/utils/is-business-email";
+import { isBusinessEmail } from "../apps/web/src/utils/is-business-email";
 
 describe("isValidBusinessEmail", () => {
   it("should return false because its a free domain", () => {

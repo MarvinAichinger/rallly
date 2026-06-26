@@ -2,7 +2,7 @@ import {
   dedupeTimeSlots,
   generateTimeSlots,
   parseStartTime,
-} from "../../src/app/api/private/utils/time-slots";
+} from "../apps/web/src/app/api/private/utils/time-slots";
 
 describe("time-slots integration", () => {
   it("should generate and deduplicate overlapping slots from two generators", () => {
